@@ -2,7 +2,7 @@
 
 Agente di sicurezza **autonomo** che tutela l'intero ecosistema ZDOS.
 
-Non è legato a hardware specifico (né al Compaq e660). È un servizio/processo che può girare su nodi ZDOS, VPS, o insieme a K.I.R.A.
+Non è legato a hardware specifico. È un servizio/processo che può girare su nodi ZDOS (old o new hardware), VPS, o insieme a K.I.R.A.
 
 ## Funzioni
 
@@ -16,6 +16,8 @@ Non è legato a hardware specifico (né al Compaq e660). È un servizio/processo
 
 Prototipo di laboratorio (M1). Segue la policy di verità ZDOS.
 
+Collegato al core: vedi `docs/FINAL-STATUS-COMPLETAMENTO.md` nel repo ZDOS.
+
 ## Avvio
 
 ```sh
@@ -27,7 +29,6 @@ python3 agent/security_agent.py
 - `agent/security_agent.py` — agente principale
 - `docs/ARCHITECTURE.md` — architettura
 - `docs/KIRA-BRIDGE.md` — protocollo con K.I.R.A.
-- `logs/` — destinazione cattura (esempio)
 
 ## Integrazione
 
