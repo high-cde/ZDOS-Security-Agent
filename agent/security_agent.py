@@ -3,14 +3,13 @@
 ZDOS Security Agent
 Agente autonomo che protegge l'ecosistema ZDOS.
 
-- Intercetta richieste in entrata
+- Intercetta richieste
+- Cattura su file (audit)
 - Comunica con K.I.R.A.
-- Cattura dati di attacco su file
-- Applica decisioni di policy
+- Prepara record tipizzati per DSN (security-event)
 """
 
 import json
-import time
 from pathlib import Path
 from datetime import datetime
 
@@ -20,21 +19,28 @@ ATTACK_LOG = LOG_DIR / "attacks.jsonl"
 class ZDOSSecurityAgent:
     def __init__(self):
         LOG_DIR.mkdir(exist_ok=True)
-        self.version = "0.1.0-lab"
+        self.version = "0.2.0-lab"
 
     def capture(self, event: dict):
-        """Scrive l'evento di attacco/sospetto su file."""
         event["captured_at"] = datetime.utcnow().isoformat() + "Z"
         event["agent"] = self.version
         with ATTACK_LOG.open("a") as f:
             f.write(json.dumps(event) + "\n")
         print(f"[CAPTURE] {event.get('type', 'unknown')} -> {ATTACK_LOG}")
 
+    def to_dsn_record(self, event: dict) -> dict:
+        """Converte un evento in record tipizzato DSN."""
+        return {
+            "type": "security-event",
+            "src_ip": event.get("src"),
+            "anomaly_score": event.get("anomaly_score", 0),
+            "details": event.get("details", {}),
+            "action": "log_and_monitor",
+            "agent_version": self.version
+        }
+
     def notify_kira(self, payload: dict) -> dict:
-        """Stub di comunicazione con K.I.R.A."""
-        # In produzione: IPC, socket, o chiamata al processo KIRA
         print(f"[KIRA] invio: {payload.get('type')}")
-        # Risposta simulata
         return {
             "action": "log_and_monitor",
             "confidence": 0.8,
@@ -42,23 +48,27 @@ class ZDOSSecurityAgent:
         }
 
     def handle_request(self, request: dict) -> dict:
-        """Punto di ingresso per ogni richiesta esterna."""
         print(f"[AGENT] richiesta da {request.get('src', 'unknown')}")
 
         suspicious = request.get("suspicious", False) or request.get("anomaly_score", 0) > 0.7
 
         if suspicious:
-            self.capture({
+            captured = {
                 "type": "suspicious_request",
                 "src": request.get("src"),
                 "payload_hash": request.get("payload_hash"),
-                "details": request
-            })
+                "details": request,
+                "anomaly_score": request.get("anomaly_score")
+            }
+            self.capture(captured)
+            dsn_record = self.to_dsn_record(captured)
+            print(f"[DSN] record pronto: {dsn_record['type']}")
             decision = self.notify_kira(request)
             return {
                 "allowed": decision.get("action") != "block",
                 "decision": decision,
-                "captured": True
+                "captured": True,
+                "dsn_record": dsn_record
             }
 
         return {"allowed": True, "captured": False}
@@ -67,7 +77,6 @@ def main():
     agent = ZDOSSecurityAgent()
     print(f"ZDOS Security Agent {agent.version} avviato")
 
-    # Demo di laboratorio
     demo = {
         "src": "203.0.113.42",
         "suspicious": True,
